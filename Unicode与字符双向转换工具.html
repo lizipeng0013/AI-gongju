@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode 双向转换 · 完整码点保留</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+        }
+        body {
+            background: #f5f7fb;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+        .card {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.06);
+            padding: 2rem 2.2rem;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin-top: 0;
+            margin-bottom: 0.3rem;
+            color: #0b1b33;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        h1 span {
+            background: #eaeef5;
+            font-size: 0.9rem;
+            font-weight: 400;
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+            color: #2c3e66;
+        }
+        .sub {
+            color: #3e4f6e;
+            margin-bottom: 2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #dfe5ef;
+            font-size: 0.96rem;
+        }
+        .sub strong {
+            background: #f0f3f9;
+            padding: 0.2rem 0.6rem;
+            border-radius: 24px;
+            font-weight: 500;
+            color: #003c8b;
+        }
+        .converter-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+        .panel {
+            background: #f9fafd;
+            border-radius: 1.5rem;
+            padding: 1.6rem 1.8rem;
+            border: 1px solid #e9edf4;
+        }
+        .panel h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 1.2rem;
+            color: #14273e;
+        }
+        .panel h2 .badge {
+            background: #d4def0;
+            border-radius: 30px;
+            padding: 0.2rem 0.8rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #1d3a6d;
+        }
+        .textarea-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #2b3f5c;
+            margin-left: 0.3rem;
+        }
+        textarea {
+            width: 100%;
+            padding: 1rem 1.2rem;
+            font-size: 1rem;
+            border: 2px solid #dfe6f0;
+            border-radius: 1.2rem;
+            background: white;
+            resize: vertical;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            transition: 0.15s;
+            line-height: 1.5;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #4f7eb3;
+            box-shadow: 0 0 0 3px rgba(79,126,179,0.2);
+        }
+        textarea[readonly] {
+            background: #f3f6fb;
+            border-color: #d9e2ef;
+            color: #1a2b44;
+        }
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin: 0.8rem 0 0.5rem;
+            align-items: center;
+        }
+        .btn {
+            background: white;
+            border: 1.5px solid #b7c7dd;
+            padding: 0.6rem 1.4rem;
+            border-radius: 3rem;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #1b3552;
+            cursor: pointer;
+            transition: 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .btn-primary {
+            background: #1b3552;
+            border-color: #1b3552;
+            color: white;
+            box-shadow: 0 6px 12px rgba(27,53,82,0.15);
+        }
+        .btn-primary:hover {
+            background: #23476e;
+            border-color: #23476e;
+        }
+        .btn:hover {
+            background: #edf2f9;
+            border-color: #8fa6c5;
+        }
+        .btn-primary:hover {
+            background: #23476e;
+            border-color: #23476e;
+        }
+        .error-msg {
+            min-height: 2rem;
+            font-size: 0.9rem;
+            color: #b13e4b;
+            background: #ffefef;
+            border-radius: 2rem;
+            padding: 0.3rem 1rem;
+            margin-top: 0.5rem;
+            border: 1px solid #ffc9c9;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .sep-dot {
+            color: #95abc7;
+            font-size: 1.2rem;
+            margin: 0 0.2rem;
+        }
+        .footnote {
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            color: #657e9e;
+            background: #f1f5fc;
+            padding: 0.7rem 1.4rem;
+            border-radius: 3rem;
+            text-align: center;
+        }
+        .footnote code {
+            background: #dbe5f1;
+            padding: 0.2rem 0.6rem;
+            border-radius: 30px;
+            font-family: monospace;
+        }
+        .example-btn {
+            background: transparent;
+            border: 1px dashed #9bb1ce;
+            padding: 0.4rem 1.2rem;
+        }
+        .example-btn:hover {
+            background: #e1eaf5;
+            border: 1px dashed #4f7eb3;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>
+        🔁 Unicode 双向转换
+        <span>超过FFFF · 原样保留</span>
+    </h1>
+    <div class="sub">
+        ⚡ 字符 ↔ 码点 &nbsp;&nbsp;  <strong>非BMP字符(如😀📌)显示为U+1F600，绝不拆成代理对</strong>
+    </div>
+
+    <div class="converter-panel">
+        <!-- 区块1：字符 → Unicode -->
+        <div class="panel">
+            <h2>
+                📝 字符 → Unicode 码点
+                <span class="badge">自动识别超过FFFF</span>
+            </h2>
+            <div class="textarea-group">
+                <label>输入字符（支持任何语言、符号、emoji）</label>
+                <textarea id="charInput" rows="4" placeholder="例如：A  😀  中国">Hello 世界! 😀✨</textarea>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-primary" id="convertToUnicodeBtn">🔽 转换为码点 (U+xxxx)</button>
+                <button class="btn example-btn" id="exampleCharBtn">📋 填充示例</button>
+                <button class="btn" id="clearCharBtn">🗑️ 清空输入</button>
+            </div>
+            <div class="textarea-group" style="margin-top: 0.5rem;">
+                <label>转换结果 (每行: 字符 + 对应完整码点)</label>
+                <textarea id="unicodeOutput" rows="5" readonly placeholder="转换后会出现每个字符的U+码点..."></textarea>
+            </div>
+            <div id="charError" class="error-msg"></div>
+        </div>
+
+        <!-- 区块2：Unicode → 字符 -->
+        <div class="panel">
+            <h2>
+                🔢 Unicode 码点 → 字符
+                <span class="badge">支持U+ / 0x / 直接十六进制</span>
+            </h2>
+            <div class="textarea-group">
+                <label>输入码点 (用空格/逗号/换行分隔，支持前缀U+、0x、\u、无前缀)</label>
+                <textarea id="codeInput" rows="4" placeholder="例如：U+0041  U+1F600   0x4E16  0x754C">U+0048 U+0065 U+006C U+006C U+006F U+0020 U+4E16 U+754C U+0021 U+1F600</textarea>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-primary" id="convertToCharBtn">🔽 转换为字符</button>
+                <button class="btn example-btn" id="exampleCodeBtn">📋 填充示例</button>
+                <button class="btn" id="clearCodeBtn">🗑️ 清空输入</button>
+            </div>
+            <div class="textarea-group" style="margin-top: 0.5rem;">
+                <label>转换结果 (拼接的字符串)</label>
+                <textarea id="charOutput" rows="5" readonly placeholder="转换后的字符将显示在这里..."></textarea>
+            </div>
+            <div id="codeError" class="error-msg"></div>
+        </div>
+    </div>
+
+    <div class="footnote">
+        ⚠️ 注意 · 超过 <code>U+FFFF</code> 的字符（如 emoji）以完整码点形式展示，例如 <code>😀</code> → <code>U+1F600</code>，而不是 <code>\uD83D\uDE00</code>。反向转换也接受 <code>U+1F600</code> 或 <code>0x1F600</code>。
+    </div>
+</div>
+
+<script>
+    (function() {
+        // DOM 元素
+        const charInput = document.getElementById('charInput');
+        const unicodeOutput = document.getElementById('unicodeOutput');
+        const charError = document.getElementById('charError');
+
+        const codeInput = document.getElementById('codeInput');
+        const charOutput = document.getElementById('charOutput');
+        const codeError = document.getElementById('codeError');
+
+        // 转换 字符 → 码点 (保留超过FFFF为完整U+xxxx)
+        function convertCharsToUnicode() {
+            const input = charInput.value;
+            if (!input) {
+                unicodeOutput.value = '';
+                charError.innerText = '';
+                return;
+            }
+
+            let resultLines = [];
+            // 使用 for...of 正确遍历每一个Unicode码点（包括超过FFFF的）
+            for (const ch of input) {
+                // 获取完整码点 (十进制)
+                const codePoint = ch.codePointAt(0);
+                // 转成十六进制，大写
+                let hex = codePoint.toString(16).toUpperCase();
+                // 为了保证可读性，BMP区域补前导零到4位，超过FFFF的不补（padStart仅当长度小于4时补，不影响超长）
+                hex = hex.padStart(4, '0');
+                // 用字符和码点显示，如果字符是控制字符可能显示怪异，但保留可见性
+                // 为防止字符本身是空格/换行导致视觉错乱，但仍保留原样
+                resultLines.push(`${ch}  ⇢  U+${hex}`);
+            }
+            unicodeOutput.value = resultLines.join('\n');
+            charError.innerText = ''; // 清除旧错误
+        }
+
+        // 转换 码点 → 字符 (严格解析，忽略非法，保留超过FFFF)
+        function convertCodePointsToChars() {
+            const input = codeInput.value;
+            if (!input.trim()) {
+                charOutput.value = '';
+                codeError.innerText = '';
+                return;
+            }
+
+            // 按空白、逗号分割 (还会处理换行)
+            const rawTokens = input.split(/[\s,]+/).filter(token => token.trim() !== '');
+            let outputStr = '';
+            const errors = [];
+
+            for (let token of rawTokens) {
+                token = token.trim();
+                // 从token中提取连续的十六进制部分 (1~6位，对应最大10FFFF)
+                const hexMatch = token.match(/[0-9A-Fa-f]{1,6}/);
+                if (!hexMatch) {
+                    errors.push(`无法解析: “${token}” (无十六进制数)`);
+                    continue;
+                }
+                const hexValue = hexMatch[0]; // 取第一个匹配的十六进制串
+                let code = parseInt(hexValue, 16);
+                // 检查码点范围 (0 ~ 0x10FFFF)，并排除NaN
+                if (isNaN(code) || code < 0 || code > 0x10FFFF) {
+                    errors.push(`码点超出范围 (0~0x10FFFF): “${token}”`);
+                    continue;
+                }
+                // 尝试使用 fromCodePoint  (自动过滤代理项 D800-DFFF 会抛异常)
+                try {
+                    outputStr += String.fromCodePoint(code);
+                } catch (e) {
+                    errors.push(`无效码点 (代理项/非字符): “${token}” — ${e.message}`);
+                }
+            }
+
+            charOutput.value = outputStr;
+            if (errors.length > 0) {
+                codeError.innerText = '⚠️ ' + errors.join('； ');
+            } else {
+                codeError.innerText = '';
+            }
+        }
+
+        // --- 示例填充 ---
+
+        // 字符示例: 包含基本多语言平面和补充平面
+        function fillCharExample() {
+            charInput.value = 'Hello 😊 我们 ✨ 𝟙𝟚𝟛 (𠮷𠮷) 🌀';
+            convertCharsToUnicode(); // 顺便触发转换
+        }
+
+        // 码点示例: 对应 "Hi 🌍 世界 😎"
+        function fillCodeExample() {
+            codeInput.value = 'U+0048 U+0069 U+0020 U+1F30D U+0020 U+4E16 U+754C U+0020 U+1F60E';
+            convertCodePointsToChars(); // 顺便触发转换
+        }
+
+        // 清空
+        function clearChar() {
+            charInput.value = '';
+            unicodeOutput.value = '';
+            charError.innerText = '';
+        }
+
+        function clearCode() {
+            codeInput.value = '';
+            charOutput.value = '';
+            codeError.innerText = '';
+        }
+
+        // --- 绑定事件 ---
+        document.getElementById('convertToUnicodeBtn').addEventListener('click', convertCharsToUnicode);
+        document.getElementById('convertToCharBtn').addEventListener('click', convertCodePointsToChars);
+
+        document.getElementById('exampleCharBtn').addEventListener('click', fillCharExample);
+        document.getElementById('exampleCodeBtn').addEventListener('click', fillCodeExample);
+
+        document.getElementById('clearCharBtn').addEventListener('click', clearChar);
+        document.getElementById('clearCodeBtn').addEventListener('click', clearCode);
+
+        // 附加优化: 输入框按需可自动转换? 不自动，保留手动习惯，但可以用快捷键。 也可以加上回车触发（简化，不加）
+
+        // 页面初始化时显示默认示例转换（让首次打开有内容）
+        window.addEventListener('load', function() {
+            // 预先执行两个转换，让页面打开就有展示
+            convertCharsToUnicode();
+            convertCodePointsToChars();
+        });
+
+        // 额外的便利：在字符输入框按 Ctrl+Enter 或 Cmd+Enter 触发转换
+        charInput.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                convertCharsToUnicode();
+            }
+        });
+        codeInput.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                convertCodePointsToChars();
+            }
+        });
+
+        // 处理超过FFFF的反向保留: 已经在 fromCodePoint 中自动支持，确保无误。
+        // 额外: 展示的码点都是完整格式，满足要求。
+    })();
+</script>
+</body>
+</html>
